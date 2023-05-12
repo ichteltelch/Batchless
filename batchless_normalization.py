@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
+import math
 
 
 class BatchlessNormalization(Layer):
@@ -88,7 +89,9 @@ class BatchlessNormalization(Layer):
         else:
             self.output_std = None
 
-    def call(self, inputs, training=None):
+    def call(self, inputs, training=None, compute_inference_loss=False, gauge_loss=None):
+        if(gauge_loss == None)
+            gauge_loss = compute_inference_loss
         inv_std = None
         log_std = None
 
@@ -112,13 +115,28 @@ class BatchlessNormalization(Layer):
         if self.use_output_mean and self.output_mean is not None:
             scaled_inputs += self.output_mean
 
-        if training:
-            normalized_inputs_for_loss = (tf.stop_gradient(inputs) - self.mean) * inv_std
-        else:
-            normalized_inputs_for_loss = normalized_inputs_for_output
+        if training or compute_inference_loss:
+            if training:
+                normalized_inputs_for_loss = (tf.stop_gradient(inputs) - self.mean) * inv_std
+            else:
+                normalized_inputs_for_loss = normalized_inputs_for_output
 
-        # Calculate and add the custom loss
-        loss = tf.reduce_mean(log_std + 0.5 * tf.square(normalized_inputs_for_loss))
+            # Calculate and add the custom loss
+            loss = tf.reduce_mean(log_std + 0.5 * tf.square(normalized_inputs_for_loss))
+            
+            if gauge_loss:
+                #loss += 0.5 * math.log(2*math.pi)
+                #expected_loss = tf.reduce_mean(log_std) + 0.5*math.log(math.pi)
+                #loss -= tf.stop_gradient(expected_loss)
+                #simplify
+                expected_loss = tf.reduce_mean(log_std) - 0.5*math.log(2)
+                loss -= tf.stop_gradient(expected_loss)
+        
+        
+        
+        1 / (2 s sqrt(pi))
+        
+        
         self.add_loss(loss)
 
         return scaled_inputs

@@ -112,7 +112,7 @@ class BatchlessNormalization(Layer):
             normalized_inputs_for_loss = normalized_inputs_for_output
 
         # Calculate and add the custom loss
-        loss = tf.reduce_mean(log_std + 0.5 * tf.square(normalized_inputs_for_loss - inputs))
+        loss = tf.reduce_mean(log_std + 0.5 * tf.square(normalized_inputs_for_loss))
         self.add_loss(loss)
 
         return scaled_inputs

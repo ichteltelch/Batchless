@@ -32,7 +32,7 @@ class BatchlessNormalization(Layer):
     def get_config(self):
         config = super(BatchlessNormalization, self).get_config()
         config.update({
-            "axes":self.axes,
+            "axes":self.axes.tolist(),
             "epsilon":self.epsilon,
             "use_output_std":self.use_output_std,
             "use_output_mean":self.use_output_mean,
@@ -46,23 +46,27 @@ class BatchlessNormalization(Layer):
         self.mean = self.add_weight(shape=param_shape,
                                     initializer='zeros',
                                     trainable=True,
-                                    name='mean')
+                                    name='mean',
+                                    dtype=self.dtype)
 
         if self.std_parametrization == 'abs':
             self.std = self.add_weight(shape=param_shape,
                                        initializer='ones',
                                        trainable=True,
-                                       name='std')
+                                       name='std',
+                                       dtype=self.dtype)
         elif self.std_parametrization == 'log':
             self.log_std = self.add_weight(shape=param_shape,
                                            initializer='zeros',
                                            trainable=True,
-                                           name='std')
+                                           name='std',
+                                           dtype=self.dtype)
         elif self.std_parametrization == 'inv':
             self.inv_std = self.add_weight(shape=param_shape,
                                            initializer='ones',
                                            trainable=True,
-                                           name='std')
+                                           name='std',
+                                           dtype=self.dtype)
         else:
             raise ValueError("Invalid std_parametrization value. Possible values are 'abs', 'log', or 'inv'.")
 
@@ -70,7 +74,8 @@ class BatchlessNormalization(Layer):
             self.output_mean = self.add_weight(shape=param_shape,
                                                initializer='zeros',
                                                trainable=True,
-                                               name='output_mean')
+                                               name='output_mean',
+                                               dtype=self.dtype)
         else:
             self.output_mean = None
 
@@ -78,7 +83,8 @@ class BatchlessNormalization(Layer):
             self.output_std = self.add_weight(shape=param_shape,
                                               initializer='ones',
                                               trainable=True,
-                                              name='output_std')
+                                              name='output_std',
+                                              dtype=self.dtype)
         else:
             self.output_std = None
 

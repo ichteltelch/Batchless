@@ -88,22 +88,33 @@ class BatchlessNormalization(Layer):
                                               dtype=self.dtype)
         else:
             self.output_std = None
-
+    """
+    Parameters:
+        inputs (tensor): The input activations
+        training (bool): Whether the layer is training
+        compute_inference_loss (bool): whether to compute the loss at inverence time at all
+        gauge_loss(bool): whether to shift the loss value so that its expectation is zero if the input samples conform
+            to the learned distribution. This does not affect the gradients.
+    """
     def call(self, inputs, training=None, compute_inference_loss=False, gauge_loss=None):
-        if(gauge_loss == None)
+        if gauge_loss == None:
             gauge_loss = compute_inference_loss
         inv_std = None
         log_std = None
+        neegs_log = (training or compute_inference_loss and not gauge_loss)
 
         if hasattr(self, 'std'):
             inv_std = tf.math.reciprocal(tf.abs(self.std) + self.epsilon)
-            log_std = tf.math.log(tf.abs(self.std) + self.epsilon)
+            if needs_log: 
+                log_std = tf.math.log(tf.abs(self.std) + self.epsilon)
         elif hasattr(self, 'log_std'):
             inv_std = tf.math.exp(-self.log_std)
-            log_std = self.log_std
+            if needs_log: 
+                log_std = self.log_std
         elif hasattr(self, 'inv_std'):
             inv_std = self.inv_std
-            log_std = -tf.math.log(tf.abs(self.inv_std) + self.epsilon)
+            if needs_log: 
+                log_std = -tf.math.log(tf.abs(self.inv_std) + self.epsilon)
 
         normalized_inputs_for_output = (inputs - tf.stop_gradient(self.mean)) * tf.stop_gradient(inv_std)
 
@@ -116,26 +127,24 @@ class BatchlessNormalization(Layer):
             scaled_inputs += self.output_mean
 
         if training or compute_inference_loss:
+            
             if training:
                 normalized_inputs_for_loss = (tf.stop_gradient(inputs) - self.mean) * inv_std
             else:
                 normalized_inputs_for_loss = normalized_inputs_for_output
 
             # Calculate and add the custom loss
-            loss = tf.reduce_mean(log_std + 0.5 * tf.square(normalized_inputs_for_loss))
-            
-            if gauge_loss:
-                #loss += 0.5 * math.log(2*math.pi)
-                #expected_loss = tf.reduce_mean(log_std) + 0.5*math.log(math.pi)
-                #loss -= tf.stop_gradient(expected_loss)
-                #simplify
-                expected_loss = tf.reduce_mean(log_std) - 0.5*math.log(2)
-                loss -= tf.stop_gradient(expected_loss)
-        
-        
-        
-        1 / (2 s sqrt(pi))
-        
+            # Note that we omit the term log(2π)/2 which theoretically also arises.
+            if training or not gauge_loss:
+                mean_log = tf.reduce_mean(log_std)
+                loss = mean_log + 0.5 * tf.reduce_mean(tf.square(normalized_inputs_for_loss))
+                if gauge_loss:
+                    expected_loss = mean_log
+                    loss += - tf.stop_gradient(expected_loss) - 0.5
+            else:
+                # when we don't need gradients and the expected loss is gauged towards zero
+                # we don't actually need the logarithms of the standard deviations
+                loss = 0.5 * (tf.reduce_mean(tf.square(normalized_inputs_for_loss)) - 1)        
         
         self.add_loss(loss)
 

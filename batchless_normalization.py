@@ -18,9 +18,19 @@ class BatchlessNormalization(Layer):
         use_output_mean (bool): Whether to learn output mean parameters for shifting the normalized input. Default is True.
         std_parametrization (str): Parameterization for the standard deviation. Possible values are 'abs', 'log', or 'inv'.
             Default is 'abs'.
+            gauge_loss(bool): Whether to shift the loss value so that its expectation is zero if the input samples conform
+            to the learned distribution. This does not affect the gradients. Default is True.
     """
-
-    def __init__(self, axes=None, epsilon=1e-5, use_output_std=True, use_output_mean=True, std_parametrization='abs', **kwargs):
+    def __init__(
+        self,
+        axes=None,
+        epsilon=1e-5,
+        use_output_std=True,
+        use_output_mean=True,
+        std_parametrization="abs",
+        gauge_loss=True,
+        **kwargs
+    ):
         super(BatchlessNormalization, self).__init__(**kwargs)
         if axes is None:
             axes = []  # Default to no specific axes
@@ -93,15 +103,13 @@ class BatchlessNormalization(Layer):
         inputs (tensor): The input activations
         training (bool): Whether the layer is training
         compute_inference_loss (bool): whether to compute the loss at inverence time at all
-        gauge_loss(bool): whether to shift the loss value so that its expectation is zero if the input samples conform
-            to the learned distribution. This does not affect the gradients.
     """
-    def call(self, inputs, training=None, compute_inference_loss=False, gauge_loss=None):
-        if gauge_loss == None:
-            gauge_loss = compute_inference_loss
+    def call(self, inputs, training=None, compute_inference_loss=False):
+        gauge_loss = self.gauge_loss
+
         inv_std = None
         log_std = None
-        neegs_log = (training or compute_inference_loss and not gauge_loss)
+        needs_log = (training or compute_inference_loss and not gauge_loss)
 
         if hasattr(self, 'std'):
             inv_std = tf.math.reciprocal(tf.abs(self.std) + self.epsilon)

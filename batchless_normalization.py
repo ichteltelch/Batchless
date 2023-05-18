@@ -35,6 +35,7 @@ class BatchlessNormalization(Layer):
         if axes is None:
             axes = []  # Default to no specific axes
         self.axes = axes
+        self.gauge_loss = gauge_loss
         self.epsilon = epsilon
         self.use_output_std = use_output_std
         self.use_output_mean = use_output_mean
@@ -98,15 +99,10 @@ class BatchlessNormalization(Layer):
                                               dtype=self.dtype)
         else:
             self.output_std = None
-    """
-    Parameters:
-        inputs (tensor): The input activations
-        training (bool): Whether the layer is training
-        compute_inference_loss (bool): whether to compute the loss at inverence time at all
-    """
-    def call(self, inputs, training=None, compute_inference_loss=False):
-        gauge_loss = self.gauge_loss
 
+    def call(self, inputs, training=None):
+        gauge_loss = self.gauge_loss
+        compute_inference_loss = True
         inv_std = None
         log_std = None
         needs_log = (training or compute_inference_loss and not gauge_loss)

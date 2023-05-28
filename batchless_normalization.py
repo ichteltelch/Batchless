@@ -71,10 +71,10 @@ class BatchlessNormalization(Layer):
                 elif a<0:
                     a += len(input_shape)
                     if a<0:
-                      raise f"Specified axis {a - len(input_shape)} does not exist in input_shape {input_shape}"
+                        raise f"Specified axis {a - len(input_shape)} does not exist in input_shape {input_shape}"
                 self.axes[i] = a
-           if 0 not in self.axes:
-              self.axes = [0] + self.axes
+            if 0 not in self.axes:
+                self.axes = [0] + self.axes
             
         param_shape = [1 if i in self.axes or i == 0 else dim for i, dim in enumerate(input_shape)]
         self.param_shape = param_shape
@@ -130,8 +130,8 @@ class BatchlessNormalization(Layer):
     """
     def begin_observe_mean(self):
         if hasattr(self, 'centered_sample_square_sum'):
-          if self.sample_count > 0:
-            raise "Cannot start observing samples for mean after samples for variance have already been recorded!"
+            if self.sample_count > 0:
+                raise "Cannot start observing samples for mean after samples for variance have already been recorded!"
 
         self.sample_sum = tf.Variable(shape=self.param_shape,
                                       initial_value = tf.zeros(self.param_shape),
@@ -151,8 +151,8 @@ class BatchlessNormalization(Layer):
     """
     def begin_observe_std(self):
         if hasattr(self, 'sample_sum'):
-          if self.sample_count > 0:
-            raise "Cannot start observing samples for variance after samples for mean have already been recorded!"
+            if self.sample_count > 0:
+                raise "Cannot start observing samples for variance after samples for mean have already been recorded!"
         self.centered_sample_square_sum = tf.Variable(shape=self.param_shape,
                                                       initial_value = tf.zeros(self.param_shape),
                                                       trainable=False,
@@ -180,69 +180,66 @@ class BatchlessNormalization(Layer):
     """
     def end_observe(self, preserve_semantics=False):
 
-      if hasattr(self, 'sample_sum'):
-        mean = self.sample_sum / self.sample_count
-
-      if hasattr(self, 'centered_sample_square_sum'):
-
-
-
-        var = self.centered_sample_square_sum/self.sample_count
         if hasattr(self, 'sample_sum'):
-          # the mean was determined simultaneously. Need to shift values around
-          var += 2 * self.mean * mean - tf.square(self.mean) - tf.square(mean)
-        std = tf.sqrt(var)
+            mean = self.sample_sum / self.sample_count
 
-        if preserve_semantics:
-          if(self.use_output_std):
+        if hasattr(self, 'centered_sample_square_sum'):
+            var = self.centered_sample_square_sum/self.sample_count
+            if hasattr(self, 'sample_sum'):
+              # the mean was determined simultaneously. Need to shift values around
+              var += 2 * self.mean * mean - tf.square(self.mean) - tf.square(mean)
+            std = tf.sqrt(var)
+
+            if preserve_semantics:
+                if(self.use_output_std):
+                    if hasattr(self, 'std'):
+                        old_std = self.std
+                    elif hasattr(self, 'log_std'):
+                        old_std = tf.exp(self.inv_std)
+                    elif hasattr(self, 'inv_std'):
+                        old_std = tf.reciprocal(self.inv_std)
+                    self.output_std.assign(self.output_std * std / old_std)
+
+
             if hasattr(self, 'std'):
-              old_std = self.std
+                self.std.assign(std)
             elif hasattr(self, 'log_std'):
-              old_std = tf.exp(self.inv_std)
+                self.log_std.assign(tf.math.log(std))
             elif hasattr(self, 'inv_std'):
-              old_std = tf.reciprocal(self.inv_std)
-            self.output_std.assign(self.output_std * std / old_std)
-          
+                self.inv_std.assign(tf.math.reciprocal(std))
 
-        if hasattr(self, 'std'):
-          self.std.assign(std)
-        elif hasattr(self, 'log_std'):
-          self.log_std.assign(tf.math.log(std))
-        elif hasattr(self, 'inv_std'):
-          self.inv_std.assign(tf.math.reciprocal(std))
-      
-        del self.centered_sample_square_sum
-      
-      if hasattr(self, 'sample_sum'):
+            del self.centered_sample_square_sum
 
-        if preserve_semantics:
-          if(self.use_output_mean):
-            if hasattr(self, 'std'):
-              in_std = self.std
-            elif hasattr(self, 'log_std'):
-              in_std = tf.exp(self.inv_std)
-            elif hasattr(self, 'inv_std'):
-              in_std = tf.reciprocal(self.inv_std)
-            self.output_std.assign_add((self.mean-mean)*self.out_std/in_std)
+        if hasattr(self, 'sample_sum'):
+
+            if preserve_semantics:
+                if(self.use_output_mean):
+                    if hasattr(self, 'std'):
+                        in_std = self.std
+                    elif hasattr(self, 'log_std'):
+                        in_std = tf.exp(self.inv_std)
+                    elif hasattr(self, 'inv_std'):
+                        in_std = tf.reciprocal(self.inv_std)
+                    self.output_std.assign_add((self.mean-mean)*self.out_std/in_std)
 
 
-        self.mean.assign(mean)
+            self.mean.assign(mean)
 
 
 
 
-        del self.sample_sum
+            del self.sample_sum
 
-      if hasattr(self, 'sample_count'):
-        del self.sample_count
+        if hasattr(self, 'sample_count'):
+            del self.sample_count
         
     
     def call(self, inputs, training=None):
         
         if hasattr(self, 'sample_count'):
-           if training:
-              raise "Cannot train BlN layer: still accumulating input statistics"
-           self.sample_count += 1
+            if training:
+                raise "Cannot train BlN layer: still accumulating input statistics"
+            self.sample_count += 1
         
         if hasattr(self, 'sample_sum'):
             self.sample_sum.assign_add(tf.reduce_mean(inputs, axis=self.axes, keepdims=True))

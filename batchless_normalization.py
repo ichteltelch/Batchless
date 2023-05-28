@@ -73,9 +73,8 @@ class BatchlessNormalization(Layer):
                     if a<0:
                       raise f"Specified axis {a - len(input_shape)} does not exist in input_shape {input_shape}"
                 self.axes[i] = a
-            if 0 not in axes:
-              axes = [0] + axes
-
+           if 0 not in self.axes:
+              self.axes = [0] + self.axes
             
         param_shape = [1 if i in self.axes or i == 0 else dim for i, dim in enumerate(input_shape)]
         self.param_shape = param_shape

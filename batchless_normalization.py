@@ -11,7 +11,7 @@ class BatchlessNormalization(Layer):
 
     Parameters:
         shared_axes (list): List of axes along which the mean and standard deviation parameters are shared. Default is None,
-            which means only the batch axis is shared. The batch axis is always shared.
+            which means that all except the last axis are shared. The batch axis is always shared.
         epsilon (float): Small constant added to denominators and logarithm-function arguments for numerical stability. Default is 1e-5.
         use_output_std (bool): Whether to learn output standard deviation parameters for scaling the normalized input.
             Default is True.
@@ -187,7 +187,7 @@ class BatchlessNormalization(Layer):
             var = self.centered_sample_square_sum/self.sample_count
             if hasattr(self, 'sample_sum'):
               # the mean was determined simultaneously. Need to shift values around
-              var += 2 * self.mean * mean - tf.square(self.mean) - tf.square(mean)
+              var -= tf.square(self.mean - mean)
             std = tf.sqrt(var)
 
             if preserve_semantics:

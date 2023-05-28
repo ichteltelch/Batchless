@@ -10,7 +10,7 @@ class BatchlessNormalization(Layer):
     and uses them to normalize the input. It also supports optional scaling and shifting of the normalized input.
 
     Parameters:
-        axes (list): List of axes along which the mean and standard deviation parameters are shared. Default is None,
+        shared_axes (list): List of axes along which the mean and standard deviation parameters are shared. Default is None,
             which means only the batch axis is shared. The batch axis is always shared.
         epsilon (float): Small constant added to denominators and logarithm-function arguments for numerical stability. Default is 1e-5.
         use_output_std (bool): Whether to learn output standard deviation parameters for scaling the normalized input.

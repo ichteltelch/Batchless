@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
 import math
-
+import numpy as np
 
 class BatchlessNormalization(Layer):
     """
@@ -27,7 +27,7 @@ class BatchlessNormalization(Layer):
     """
     def __init__(
         self,
-        axes=None,
+        shared_axes=None,
         epsilon=1e-5,
         use_output_std=True,
         use_output_mean=True,
@@ -38,9 +38,7 @@ class BatchlessNormalization(Layer):
         **kwargs
     ):
         super(BatchlessNormalization, self).__init__(**kwargs)
-        if axes is None:
-            axes = []  # Default to no specific axes
-        self.axes = axes
+        self.axes = shared_axes
         self.init_mean = init_mean
         self.init_std = init_std
         self.gauge_loss = gauge_loss
@@ -62,6 +60,23 @@ class BatchlessNormalization(Layer):
         return config
 
     def build(self, input_shape):
+        if self.axes == None:
+            self.axes = list(range(0, len(input_shape)-1))
+        else:
+            self.axes = np.atleast_1d(self.axes)
+            for i, a in enumerate(self.axes):
+                a = self.axes[i]
+                if a>=len(input_shape):
+                    raise f"Specified axis {a} does not exist in input_shape {input_shape}"
+                elif a<0:
+                    a += len(input_shape)
+                    if a<0:
+                      raise f"Specified axis {a - len(input_shape)} does not exist in input_shape {input_shape}"
+                self.axes[i] = a
+            if 0 not in axes:
+              axes = [0] + axes
+
+            
         param_shape = [1 if i in self.axes or i == 0 else dim for i, dim in enumerate(input_shape)]
         self.param_shape = param_shape
 
@@ -231,14 +246,14 @@ class BatchlessNormalization(Layer):
            self.sample_count += 1
         
         if hasattr(self, 'sample_sum'):
-            self.sample_sum.assign_add(tf.reduce_mean(inputs, axis=[0]+self.axes, keepdims=True))
+            self.sample_sum.assign_add(tf.reduce_mean(inputs, axis=self.axes, keepdims=True))
         
         centered_inputs_for_output = (inputs - tf.stop_gradient(self.mean))
         
         if hasattr(self, 'centered_sample_square_sum'):
             self.centered_sample_square_sum.assign_add(
                 tf.reduce_mean(tf.square(centered_inputs_for_output), 
-                               axis=[0]+self.axes, keepdims=True))
+                               axis=self.axes, keepdims=True))
 
 
         gauge_loss = self.gauge_loss
@@ -268,12 +283,12 @@ class BatchlessNormalization(Layer):
         normalized_inputs_for_output = centered_inputs_for_output * tf.stop_gradient(inv_std)
 
         if self.use_output_std and self.output_std is not None:
-            scaled_inputs = normalized_inputs_for_output * self.output_std
+            outputs = normalized_inputs_for_output * self.output_std
         else:
-            scaled_inputs = normalized_inputs_for_output
+            outputs = normalized_inputs_for_output
 
         if self.use_output_mean and self.output_mean is not None:
-            scaled_inputs += self.output_mean
+            outputs += self.output_mean
 
         if training or compute_inference_loss:
             
@@ -297,5 +312,5 @@ class BatchlessNormalization(Layer):
         
         self.add_loss(loss)
 
-        return scaled_inputs
+        return outputs
 

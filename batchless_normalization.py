@@ -310,3 +310,103 @@ class BatchlessNormalization(Layer):
 
         return outputs
 
+
+    
+    
+    
+    
+    
+    
+    
+def extract_BlN_strata(model):
+    #reverse the direct dependency relationship
+    layer_dependers = {}
+
+    def build_layer_dependers():
+        for layer in model.layers:
+            if isinstance(layer, tf.keras.layers.InputLayer):
+                continue
+            for node in layer._inbound_nodes:
+                inbound_layers = node.inbound_layers
+                if not isinstance(inbound_layers, list):
+                    inbound_layers = [inbound_layers]
+                for inbound_layer in inbound_layers:
+                    if inbound_layer not in layer_dependers:
+                        layer_dependers[inbound_layer] = set()
+                    layer_dependers[inbound_layer].add(layer)
+    build_layer_dependers()
+
+    #memoize already traversed layers
+    bln_dependers = {}
+    def traverse_and_get_bln_dependers(layer):
+        if layer in bln_dependers:
+            return bln_dependers[layer]
+        result = set()
+    
+        if layer in layer_dependers:
+            for next_layer in layer_dependers[layer]:
+                is_bln = isinstance(next_layer, BatchlessNormalization)
+                next_dependers = traverse_and_get_bln_dependers(next_layer)
+                if is_bln:
+                    result.add(next_layer)
+                result = result | next_dependers
+        bln_dependers[layer] = result
+        return result
+    def remove_interdependencies(protostratum):
+        result = set(protostratum)
+        for bln_layer in protostratum:
+            result = result.difference(traverse_and_get_bln_dependers(bln_layer))
+        return list(result)
+
+    current_protostratum = set()
+    for layer in model.layers:
+        if isinstance(layer, BatchlessNormalization):
+            current_protostratum.add(layer)
+    current_stratum = remove_interdependencies(current_protostratum)
+    #list of strata
+    strata = []
+    while len(current_stratum) > 0:
+        strata.append(current_stratum)
+        current_protostratum = set()
+        for layer in current_stratum:
+            current_protostratum = current_protostratum | traverse_and_get_bln_dependers(layer)
+        current_stratum = remove_interdependencies(current_protostratum)
+
+    return strata
+
+
+def init_bln(model, usedData, strata=None):
+    if strata==None:
+        strata = extract_BlN_strata(model)
+    for i, stratum in enumerate(strata):
+        # estimate means
+        for layer in stratum:
+            layer.begin_observe_mean()
+        # Todo: Only the layers up to the current stratum need to be evaluated, 
+        # but this runs all layers
+        model(usedData, training=False)
+        for layer in stratum:
+            layer.end_observe()
+
+        # estimate std deviations
+        for layer in stratum:
+            layer.begin_observe_std()
+        model(usedData, training=False)
+        for layer in stratum:
+            layer.end_observe()
+
+def init_bln_singlePass(model, usedData, strata=None):
+    if strata==None:
+        strata = extract_BlN_strata(model)
+    for i, stratum in enumerate(strata):
+        # estimate means
+        for layer in stratum:
+            layer.begin_observe_mean()
+            layer.begin_observe_std()
+        # Todo: Only the layers up to the current stratum need to be evaluated, 
+        # but this runs all layers
+        model(usedData, training=False)
+        for layer in stratum:
+            layer.end_observe()
+            
+            

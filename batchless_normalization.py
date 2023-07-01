@@ -99,7 +99,7 @@ class BatchlessNormalization(Layer):
                                            dtype=self.dtype)
         elif self.std_parametrization == 'inv':
             self.inv_std = self.add_weight(shape=param_shape,
-                                           initializer=tf.keras.initializers.Constant(value=1&self.init_std),
+                                           initializer=tf.keras.initializers.Constant(value=1/self.init_std),
                                            trainable=True,
                                            name='std',
                                            dtype=self.dtype)

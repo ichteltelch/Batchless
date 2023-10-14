@@ -319,10 +319,17 @@ class BatchlessNormalization(Layer):
     
     
     
-    
+"""
+Decompose the layers of the network into a list of lists of layers ("strata") 
+so that layers in a stratum get inputs only from layers in earlier strata. 
+The stratification is filered to only include BatchlessNormalization layers.
+
+Parameters:
+    model: The neural network that should be analysed
+"""
     
 def extract_BlN_strata(model):
-    #reverse the direct dependency relationship
+    # reverse the direct dependency relationship
     layer_dependers = {}
 
     def build_layer_dependers():
@@ -339,7 +346,7 @@ def extract_BlN_strata(model):
                     layer_dependers[inbound_layer].add(layer)
     build_layer_dependers()
 
-    #memoize already traversed layers
+    # memoize already traversed layers
     bln_dependers = {}
     def traverse_and_get_bln_dependers(layer):
         if layer in bln_dependers:
@@ -377,7 +384,18 @@ def extract_BlN_strata(model):
 
     return strata
 
+"""
+Initialize the patch statistics of all BatchlessNormalization layers in a network.
 
+This function evaluates the neural network twice per training sample and stratum: 
+Once to estimate the mean and once to estimate the standard deviation.
+
+Parameters:
+    model: The neural network
+    usedData: A subsample of training data inputs that will be used to esitmate the activation statistics
+    strata: A list of lists of BatchlessNormalization layers, as determined by extract_BlN_strata.
+        Omitting this argument causes extract_BlN_strata to be called to supply the needed stratification.
+"""
 def init_bln(model, usedData, strata=None):
     if strata==None:
         strata = extract_BlN_strata(model)
@@ -397,7 +415,18 @@ def init_bln(model, usedData, strata=None):
         model(usedData, training=False)
         for layer in stratum:
             layer.end_observe()
+"""
+Initialize the patch statistics of all BatchlessNormalization layers in a network.
 
+This function evaluates the neural network only once per training sample and stratum,
+but may be less numerically stable.
+
+Parameters:
+    model: The neural network
+    usedData: A subsample of training data inputs that will be used to esitmate the activation statistics
+    strata: A list of lists of BatchlessNormalization layers, as determined by extract_BlN_strata.
+        Omitting this argument causes extract_BlN_strata to be called to supply the needed stratification.
+"""
 def init_bln_singlePass(model, usedData, strata=None):
     if strata==None:
         strata = extract_BlN_strata(model)

@@ -305,8 +305,11 @@ class BatchlessNormalization(Layer):
                 # when we don't need gradients and the expected loss is gauged towards zero
                 # we don't actually need the logarithms of the standard deviations
                 loss = 0.5 * (tf.reduce_mean(tf.square(normalized_inputs_for_loss)) - 1)        
-        
-        self.add_loss(loss)
+
+        # We don't want the loss to show up in the history, but we still want the gradient.
+        # Hence this hack. It would be better to find a more controlable way to separately
+        # report the loss from the distribution mismatch.
+        self.add_loss(loss - tf.stop_gradient(loss))
 
         return outputs
 

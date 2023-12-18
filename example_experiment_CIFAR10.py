@@ -11,6 +11,7 @@ import tensorflow as tf
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers.experimental import SyncBatchNormalization
 import math
 import numpy as np
 import keras
@@ -21,6 +22,13 @@ from batchless_normalization import init_bln_singlePass
 from tensorflow.keras.utils import to_categorical
 
 
+def makeBatchNormalizationLayer(input_shape=None):
+    #return BatchNormalization(synchronized=True, input_shape=input_shape)
+    if input_shape==None:
+        return SyncBatchNormalization()
+    else:
+        return SyncBatchNormalization(input_shape=input_shape)
+
 
 """
 Construct the network using the given normalization scheme (may be 'None', 'bn', 'abs', 'log', 'inv')
@@ -29,7 +37,7 @@ def makeNetwork(normalization='log'):
     parameterization = normalization
     layers = [];
     if normalization == "bn":
-        layers.append(BatchNormalization(synchronized=True, input_shape=[32,32,3]))
+        layers.append(makeBatchNormalizationLayer(input_shape=[32,32,3]))
     elif normalization != None:
         BatchlessNormalization(std_parametrization=parameterization, init_std = 1, init_mean=0, input_shape=[32,32,3])
     layers.extend([
@@ -37,7 +45,7 @@ def makeNetwork(normalization='log'):
         keras.layers.LeakyReLU(),
     ])
     if normalization == "bn":
-        layers.append(BatchNormalization(synchronized=True))
+        layers.append(makeBatchNormalizationLayer())
     elif normalization != None:
         layers.append(BatchlessNormalization(std_parametrization=parameterization))
     layers.extend([
@@ -47,7 +55,7 @@ def makeNetwork(normalization='log'):
         keras.layers.LeakyReLU(),
     ])
     if normalization == "bn":
-        layers.append(BatchNormalization(synchronized=True))
+        layers.append(makeBatchNormalizationLayer())
     elif normalization != None:
         layers.append(BatchlessNormalization(std_parametrization=parameterization))
     layers.extend([
@@ -57,7 +65,7 @@ def makeNetwork(normalization='log'):
         keras.layers.LeakyReLU(),
     ])
     if normalization == "bn":
-        layers.append(BatchNormalization(synchronized=True))
+        layers.append(makeBatchNormalizationLayer())
     elif normalization != None:
         layers.append(BatchlessNormalization(std_parametrization=parameterization))
     layers.extend([
@@ -68,7 +76,7 @@ def makeNetwork(normalization='log'):
         keras.layers.LeakyReLU(),
     ])
     if normalization == "bn":
-        layers.append(BatchNormalization(synchronized=True))
+        layers.append(makeBatchNormalizationLayer())
     elif normalization != None:
         layers.append(BatchlessNormalization(std_parametrization=parameterization))
     layers.extend([
@@ -77,7 +85,7 @@ def makeNetwork(normalization='log'):
         keras.layers.LeakyReLU(),
     ])
     if normalization == "bn":
-        layers.append(BatchNormalization(synchronized=True))
+        layers.append(makeBatchNormalizationLayer())
     elif normalization != None:
         layers.append(BatchlessNormalization(std_parametrization=parameterization))
     layers.extend([
@@ -116,7 +124,7 @@ def main():
         'log', 
         'inv'
     ]
-    epochs = 2
+    epochs = 60
     batch_sizes = [
         1,
         2,

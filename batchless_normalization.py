@@ -322,7 +322,7 @@ class BatchlessNormalization(Layer):
 """
 Decompose the layers of the network into a list of lists of layers ("strata") 
 so that layers in a stratum get inputs only from layers in earlier strata. 
-The stratification is filered to only include BatchlessNormalization layers.
+The stratification is filtered to only include BatchlessNormalization layers.
 
 Parameters:
     model: The neural network that should be analysed
@@ -385,7 +385,7 @@ def extract_BlN_strata(model):
     return strata
 
 """
-Initialize the patch statistics of all BatchlessNormalization layers in a network.
+Initialize the batch statistics of all BatchlessNormalization layers in a network.
 
 This function evaluates the neural network twice per training sample and stratum: 
 Once to estimate the mean and once to estimate the standard deviation.
@@ -416,7 +416,7 @@ def init_bln(model, usedData, strata=None):
         for layer in stratum:
             layer.end_observe()
 """
-Initialize the patch statistics of all BatchlessNormalization layers in a network.
+Initialize the batch statistics of all BatchlessNormalization layers in a network.
 
 This function evaluates the neural network only once per training sample and stratum,
 but may be less numerically stable.
